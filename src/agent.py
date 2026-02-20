@@ -11,7 +11,8 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.tools import tool
 
 BRAVE_API_KEY = os.environ.get("BRAVE_API_KEY", "")
-BRAVE_SEARCH_URL = "https://api.search.brave.com/res/v1/web/search"
+BRAVE_BASE_URL = os.environ.get("BRAVE_BASE_URL", "https://api.search.brave.com")
+BRAVE_SEARCH_URL = f"{BRAVE_BASE_URL}/res/v1/web/search"
 
 
 def send(msg: dict) -> None:
