@@ -38,6 +38,7 @@ def web_search(query: str) -> str:
         )
         resp.raise_for_status()
         data = resp.json()
+        log(f"Brave API returned {len(data.get('web', {}).get('results', []))} results for: {query}")
         results = []
         for item in data.get("web", {}).get("results", []):
             results.append(
@@ -115,7 +116,14 @@ def research(query: str, message_id: str) -> str:
             "message_id": message_id,
         })
 
-    return response.content
+    # response.content can be a string or list of content blocks
+    content = response.content
+    if isinstance(content, list):
+        return "\n".join(
+            block if isinstance(block, str) else block.get("text", "")
+            for block in content
+        )
+    return content
 
 
 def main():
