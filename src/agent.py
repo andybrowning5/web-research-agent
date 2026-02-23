@@ -56,13 +56,6 @@ def web_search(query: str) -> str:
 
 def research(query: str, message_id: str) -> str:
     """Run the Deep Agent to research a topic."""
-    send({
-        "type": "activity",
-        "tool": "thinking",
-        "description": "Thinking about your question...",
-        "message_id": message_id,
-    })
-
     today = datetime.now().strftime("%B %d, %Y")
 
     agent = create_deep_agent(
@@ -81,21 +74,54 @@ def research(query: str, message_id: str) -> str:
         ),
     )
 
-    result = agent.invoke(
-        {"messages": [{"role": "user", "content": query}]}
-    )
+    final_response = ""
+    emitted_tool_calls: set[str] = set()
 
-    # Extract the final AI response
-    for msg in reversed(result.get("messages", [])):
-        if getattr(msg, "type", None) == "ai" and getattr(msg, "content", None):
-            content = msg.content
-            if isinstance(content, list):
-                return "\n".join(
-                    block if isinstance(block, str) else block.get("text", "")
-                    for block in content
-                )
-            return content
-    return ""
+    for event in agent.stream(
+        {"messages": [{"role": "user", "content": query}]},
+        stream_mode="values",
+    ):
+        if not isinstance(event, dict) or "messages" not in event:
+            continue
+
+        for msg in event["messages"]:
+            if (
+                getattr(msg, "type", None) == "ai"
+                and hasattr(msg, "tool_calls")
+                and msg.tool_calls
+            ):
+                for tc in msg.tool_calls:
+                    tc_id = tc.get("id") or tc.get("name", "")
+                    if tc_id in emitted_tool_calls:
+                        continue
+                    emitted_tool_calls.add(tc_id)
+                    tool_name = tc.get("name", "unknown")
+                    tool_args = tc.get("args", {})
+                    q = tool_args.get("query", "")
+                    desc = f"{tool_name}({q})" if q else tool_name
+                    send({
+                        "type": "activity",
+                        "tool": tool_name,
+                        "description": desc,
+                        "message_id": message_id,
+                    })
+
+        for msg in reversed(event["messages"]):
+            if getattr(msg, "type", None) != "ai":
+                continue
+            msg_content = getattr(msg, "content", "")
+            if isinstance(msg_content, str) and msg_content.strip():
+                final_response = msg_content
+                break
+            elif isinstance(msg_content, list):
+                for block in msg_content:
+                    if isinstance(block, dict) and block.get("type") == "text":
+                        final_response = block.get("text", "")
+                        break
+                if final_response:
+                    break
+
+    return final_response
 
 
 def main():
