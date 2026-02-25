@@ -75,7 +75,7 @@ def research(query: str, message_id: str) -> str:
     )
 
     final_response = ""
-    emitted_tool_calls: set[str] = set()
+    __emitted_tool_calls: set[str] = set()
 
     for event in agent.stream(
         {"messages": [{"role": "user", "content": query}]},
@@ -92,9 +92,9 @@ def research(query: str, message_id: str) -> str:
             ):
                 for tc in msg.tool_calls:
                     tc_id = tc.get("id") or tc.get("name", "")
-                    if tc_id in emitted_tool_calls:
+                    if tc_id in _emitted_tool_calls:
                         continue
-                    emitted_tool_calls.add(tc_id)
+                    _emitted_tool_calls.add(tc_id)
                     tool_name = tc.get("name", "unknown")
                     tool_args = tc.get("args", {})
                     q = tool_args.get("query", "")
