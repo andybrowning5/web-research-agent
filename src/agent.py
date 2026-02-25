@@ -75,7 +75,7 @@ def research(query: str, message_id: str) -> str:
     )
 
     final_response = ""
-    __emitted_tool_calls: set[str] = set()
+    _emitted_tool_calls: set[str] = set()
 
     for event in agent.stream(
         {"messages": [{"role": "user", "content": query}]},
